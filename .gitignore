@@ -1,0 +1,9 @@
+# Ignorar o ambiente virtual
+venv/
+
+# Ficheiros de sistema
+*.pyc
+__pycache__/
+
+# Pasta de configurações
+.vscode/
