@@ -1,0 +1,41 @@
+# Estrutura do Projeto
+
+├── .buypy.key
+├── .gitignore
+├── README.md
+├── RT
+├── RX
+├── arvore.py
+├── arvore.txt
+├── config.ini
+├── conve.py
+├── converter.py
+├── converter.txt
+├── docs
+├── ola
+├── power1.ps1
+├── power2.ps1
+├── powershell
+│   ├── .gitignore
+│   ├── New Text Document.txt
+│   ├── README.md
+│   ├── power1.ps
+│   ├── power1.ps1
+│   ├── power1.txt
+│   ├── power2.ps
+│   ├── power2.ps1
+│   ├── power2.txt
+│   ├── power3.ps
+│   ├── power4.ps1
+│   └── px.ps1
+├── px.ps1
+├── px.txt
+├── requirements.txt
+├── src
+│   ├── backoffice
+│   ├── backoffice_gui
+│   │   └── buypay.py
+│   └── db
+│       └── mysql1.txt
+├── tabelas_widget.txt
+├── token.txt
