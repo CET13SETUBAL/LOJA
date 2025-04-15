@@ -15,6 +15,50 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt, QDate
 import mysql.connector
 
+
+
+def exec_script_mysql(ficheiro_sql, host, user, password, database):
+    if not os.path.exists(ficheiro_sql):
+        print(f"❌ Ficheiro não encontrado: {ficheiro_sql}")
+        return
+
+    conn = mysql.connector.connect(
+        host=host,
+        user=user,
+        password=password,
+        database=database,
+        autocommit=True
+    )
+    cursor = conn.cursor()
+
+    with open(ficheiro_sql, 'r', encoding='utf-8') as f:
+        script = f.read()
+
+    comandos = []
+    delimitador = ';'
+    buffer = ''
+
+    for linha in script.splitlines():
+        linha_strip = linha.strip()
+        if linha_strip.lower().startswith('delimiter'):
+            delimitador = linha_strip.split()[1]
+            continue
+
+        buffer += linha + '\n'
+        if buffer.strip().endswith(delimitador):
+            comandos.append(buffer.strip()[:-len(delimitador)].strip())
+            buffer = ''
+
+    for comando in comandos:
+        try:
+            cursor.execute(comando)
+            print(f"✅ Executado: {comando.splitlines()[0][:80]}...")
+        except Exception as e:
+            print(f"❌ Erro:\n{comando[:200]}\n→ {e}\n")
+
+    cursor.close()
+    conn.close()
+
 class ConfigManager:
     """Handles encrypted configuration for storing operator credentials"""
     def __init__(self, config_file='config.ini'):
@@ -85,6 +129,12 @@ class DatabaseManager:
     def connect(self, username, password, host='localhost', database='BuyPay'):
         """Connect to the database"""
         try:
+            if LoginDialog.database==0:
+                print("\nlogado\n")
+
+                #exec_script_mysql("BUYPY.sql", "localhost", "adminis", "ZZtopes!23", "sys")
+            else:
+                print("\nnao logado\n")   
             self.connection = mysql.connector.connect(
                 host=host,
                 user=username,
@@ -231,11 +281,13 @@ class DatabaseManager:
 
 class LoginDialog(QDialog):
     """Dialog for operator login"""
+    database=0
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("BuyPy Backoffice - Login")
         self.setMinimumWidth(300)
-        
+        LoginDialog.database=1        
         layout = QVBoxLayout()
         
         # Username field
@@ -269,6 +321,14 @@ class LoginDialog(QDialog):
         """Return entered username and password"""
         return self.username_input.text(), self.password_input.text()
 
+
+class AdminDialog(QDialog):
+    """Dialog for searching users"""
+    def __init__(self, db_manager, parent=None):
+        super().__init__(parent)
+        self.db_manager = db_manager
+        self.setWindowTitle("Search User")
+        self.setMinimumWidth(400)
 
 class UserSearchDialog(QDialog):
     """Dialog for searching users"""
@@ -1022,6 +1082,21 @@ class MainWindow(QMainWindow):
         tabs = QTabWidget()
         layout.addWidget(tabs)
         
+
+
+        # ADMIN Management tab
+        admin_tab = QWidget()
+        admin_layout = QVBoxLayout()
+        admin_tab.setLayout(admin_layout)
+        
+
+        admin_buttons = QHBoxLayout()
+        self.search_user_button = QPushButton("CREATE DATABASE")
+        self.search_user_button.clicked.connect(self.Admin_Database_Create)
+        admin_buttons.addWidget(self.search_user_button)
+        admin_layout.addLayout(admin_buttons)
+
+
         # User Management tab
         user_tab = QWidget()
         user_layout = QVBoxLayout()
@@ -1038,6 +1113,7 @@ class MainWindow(QMainWindow):
         
         user_layout.addLayout(user_buttons)
         tabs.addTab(user_tab, "User Management")
+        tabs.addTab(admin_tab, "Database Management")
         
         # Product Management tab
         product_tab = QWidget()
@@ -1071,6 +1147,17 @@ class MainWindow(QMainWindow):
         logout_button = QPushButton("Logout")
         logout_button.clicked.connect(self.logout)
         layout.addWidget(logout_button, alignment=Qt.AlignRight)
+    
+    def Admin_Database_Create(self):
+        """Admin create"""
+        
+        msgBox = QMessageBox()
+        #2025
+        exec_script_mysql("BUYPY.sql", "localhost", "adminis", "ZZtopes!23", "sys")
+        msgBox.setText("Base dados Criada.")
+        msgBox.exec()
+        #dialog = UserSearchDialog(self.db_manager, self)
+        #dialog.exec()
     
     def open_user_search(self):
         """Open user search dialog"""
