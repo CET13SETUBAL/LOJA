@@ -1,5 +1,9 @@
+#Autores: Nuno e Oksana
+#Data:15/04/2025
+#Turma:Cet 13 SETUBAL
 
-# LOJA - Projeto Python com GUI e Base de Dados
+# LOJA - Projeto Final(Programação Turma cet 13 SetubaL)
+ Python com GUI e Base de Dados
 
 Este é um projeto para uma aplicação de gestão de loja com interface gráfica em PySide6, ligação a base de dados MySQL, e estrutura modular.
 
@@ -22,8 +26,7 @@ LOJA/
 
 ## Como executar
 
-python src/boffice/main.py
-# ou
-python src/boffice_gui/main_gui.py
+
+python src/backoffice_gui/buypay.py
 
 
