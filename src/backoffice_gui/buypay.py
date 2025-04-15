@@ -1,3 +1,7 @@
+
+#Projecto final Programação
+#Autores: Nuno e Oksana
+#Turma: Cet 13 Setubal
 import sys
 import os
 import configparser
