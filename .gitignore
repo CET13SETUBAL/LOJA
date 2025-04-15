@@ -1,9 +1,20 @@
-# Ignorar o ambiente virtual
+﻿# Ambientes virtuais
 venv/
-
-# Ficheiros de sistema
-*.pyc
 __pycache__/
+*.pyc
 
-# Pasta de configurações
+# Configs do VSCode
 .vscode/
+
+# Ficheiros temporÃ¡rios
+*.log
+*.tmp
+*.bak
+.DS_Store
+
+#scripts ps
+powershell
+
+# Credenciais ou configs locais
+*.env
+config.ini
