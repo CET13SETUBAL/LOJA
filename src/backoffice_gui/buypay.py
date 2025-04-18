@@ -2,8 +2,11 @@
 #Projecto final Programação
 #Autores: Nuno e Oksana
 #Turma: Cet 13 Setubal
-import sys
+import subprocess
+from datetime import datetime
+from pathlib import Path
 import os
+import sys
 import configparser
 import hashlib
 import base64
@@ -12,7 +15,7 @@ from datetime import datetime, date
 from cryptography.fernet import Fernet
 from PySide6.QtWidgets import QHeaderView
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                              QHBoxLayout, QLabel, QLineEdit, QPushButton, 
+                              QHBoxLayout, QLabel, QLineEdit, QPushButton,QFileDialog, QVBoxLayout, QFormLayout, 
                               QTabWidget, QTableWidget, QTableWidgetItem, QComboBox, 
                               QDateEdit, QMessageBox, QDialog, QCheckBox, QGroupBox,
                               QSpinBox, QDoubleSpinBox, QTextEdit, QFileDialog)
@@ -21,28 +24,62 @@ import mysql.connector
 
 
 
-def exec_script_mysql(ficheiro_sql, host, user, password, database):
-    if not os.path.exists(ficheiro_sql):
+        
+class ConfigManager:
+    """Handles encrypted configuration for storing operator credentials"""
+    def __init__(self, config_file='config.ini'):
+        self.config_file = config_file
+        self.key = self.get_or_create_key()
+        self.fernet = Fernet(self.key)
+        self.config = configparser.ConfigParser()
+
+    @staticmethod
+    def fazer_backup():
+        # Diretório atual + pasta 'backups'
+        dir_backup = Path.cwd() / "backups"
+        dir_backup.mkdir(exist_ok=True)  # Cria a pasta se não existir
+
+        # Gerar timestamp e nome do ficheiro
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        caminho_ficheiro = dir_backup / f"buypy_backup_{timestamp}.sql"
+
+        try:
+            # Executar mysqldump
+            with open(caminho_ficheiro, "w") as f:
+                subprocess.run(
+                    ["mysqldump", "-u", ConfigManager.username, "-p"+ConfigManager.password, "buypy"],
+                    stdout=f,
+                    check=True
+                )
+
+            print(f"✅ Backup criado com sucesso em: {caminho_ficheiro}")
+
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Erro ao criar backup: {e}")
+
+    @staticmethod
+    def exec_script_mysql(ficheiro_sql, host, user, password, database):
+     if not os.path.exists(ficheiro_sql):
         print(f"❌ Ficheiro não encontrado: {ficheiro_sql}")
         return
 
-    conn = mysql.connector.connect(
+     conn = mysql.connector.connect(
         host=host,
         user=user,
         password=password,
         database=database,
         autocommit=True
     )
-    cursor = conn.cursor()
+     cursor = conn.cursor()
 
-    with open(ficheiro_sql, 'r', encoding='utf-8') as f:
+     with open(ficheiro_sql, 'r', encoding='utf-8') as f:
         script = f.read()
 
-    comandos = []
-    delimitador = ';'
-    buffer = ''
+     comandos = []
+     delimitador = ';'
+     buffer = ''
 
-    for linha in script.splitlines():
+     for linha in script.splitlines():
         linha_strip = linha.strip()
         if linha_strip.lower().startswith('delimiter'):
             delimitador = linha_strip.split()[1]
@@ -53,24 +90,16 @@ def exec_script_mysql(ficheiro_sql, host, user, password, database):
             comandos.append(buffer.strip()[:-len(delimitador)].strip())
             buffer = ''
 
-    for comando in comandos:
+     for comando in comandos:
         try:
             cursor.execute(comando)
             print(f"✅ Executado: {comando.splitlines()[0][:80]}...")
         except Exception as e:
             print(f"❌ Erro:\n{comando[:200]}\n→ {e}\n")
 
-    cursor.close()
-    conn.close()
+     cursor.close()
+     conn.close()
 
-class ConfigManager:
-    """Handles encrypted configuration for storing operator credentials"""
-    def __init__(self, config_file='config.ini'):
-        self.config_file = config_file
-        self.key = self.get_or_create_key()
-        self.fernet = Fernet(self.key)
-        self.config = configparser.ConfigParser()
-    
     def get_or_create_key(self):
         """Get existing key or create a new one"""
         key_file = '.buypy.key'
@@ -124,17 +153,84 @@ class ConfigManager:
         if os.path.exists(self.config_file):
             os.remove(self.config_file)
 
+   
+  #2025############################################
+class MySQLForm(QDialog):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowTitle("Configuração da Base de Dados")
+
+        # Campos de texto
+        self.ip_input = QLineEdit()
+        self.admin_input = QLineEdit()
+        self.pass_input = QLineEdit()
+        self.pass_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.db_input = QLineEdit()
+        self.sql_file_path = ""
+
+        # Botões
+        self.open_sql_btn = QPushButton("Abrir scripts de SQL")
+        self.init_db_btn = QPushButton("Iniciar base dados")
+
+        # Layouts
+        form_layout = QFormLayout()
+        form_layout.addRow("IP/DNS do MySQL:", self.ip_input)
+        form_layout.addRow("Admin Name:", self.admin_input)
+        form_layout.addRow("Password:", self.pass_input)
+        form_layout.addRow("Base de Dados:", self.db_input)
+
+        main_layout = QVBoxLayout()
+        main_layout.addLayout(form_layout)
+        main_layout.addWidget(self.open_sql_btn)
+        main_layout.addWidget(self.init_db_btn)
+
+        self.setLayout(main_layout)
+
+        # Ligações
+        self.open_sql_btn.clicked.connect(self.select_sql_file)
+        self.init_db_btn.clicked.connect(self.start_database)
+
+        # Abrir o explorador assim que a janela abre
+        self.select_sql_file()
+
+    def select_sql_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self, "Selecionar Ficheiro SQL", "", "SQL Files (*.sql);;All Files (*)"
+        )
+        if file_path:
+            self.sql_file_path = file_path
+            self.open_sql_btn.setText(f"Script Selecionado: {file_path.split('/')[-1]}")
+
+    def start_database(self):
+        # Aqui capturamos os dados do form
+        ip = self.ip_input.text()
+        admin = self.admin_input.text()
+        password = self.pass_input.text()
+        database = self.db_input.text()
+        script_path = self.sql_file_path
+
+        
+        # Mostramos os dados capturados (substituir por lógica real)
+        print("=== Dados da Configuração ===")
+        print(f"IP do MySQL: {ip}")
+        print(f"Admin: {admin}")
+        print(f"Password: {password}")
+        print(f"Base de Dados: {database}")
+        print(f"Script SQL: {script_path}")
+        ConfigManager.exec_script_mysql(script_path, ip, admin, password, database)
 
 class DatabaseManager:
     """Handles database connections and operations"""
     def __init__(self):
         self.connection = None
     
-    def connect(self, username, password, host='localhost', database='BuyPay'):
+    def connect(self, username, password, host='localhost', database='sys'):
         """Connect to the database"""
         try:
             if LoginDialog.database==0:
                 print("\nlogado\n")
+                database="BUYPY"
 
                 #exec_script_mysql("BUYPY.sql", "localhost", "adminis", "ZZtopes!23", "sys")
             else:
@@ -160,7 +256,7 @@ class DatabaseManager:
         cursor = self.connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT customer_id, first_name, last_name, email, address, postal_code, 
-                   city, country, phone, status
+                   city, country, phone_number, status
             FROM Customer
             WHERE customer_id = %s
         """, (user_id,))
@@ -173,7 +269,7 @@ class DatabaseManager:
         cursor = self.connection.cursor(dictionary=True)
         cursor.execute("""
             SELECT customer_id, first_name, last_name, email, address, postal_code, 
-                   city, country, phone, status
+                   city, country, phone_number, status
             FROM Customer
             WHERE email = %s
         """, (username,))
@@ -898,7 +994,7 @@ class OrderManagerDialog(QDialog):
         
         cursor = self.db_manager.connection.cursor(dictionary=True)
         try:
-            cursor.callproc('DailyOrders', [order_date])
+            cursor.callproc('DailyOrders_', [order_date])
             
             # Get the result set
             orders = []
@@ -1068,7 +1164,7 @@ class MainWindow(QMainWindow):
     def __init__(self, db_manager, operator_name):
         super().__init__()
         self.db_manager = db_manager
-        self.setWindowTitle(f"BuyPy Backoffice - Welcome {operator_name}")
+        self.setWindowTitle(f"BuyPy Backoffice - Benvindo {operator_name}")
         self.setMinimumSize(800, 600)
         
         # Central widget and layout
@@ -1078,7 +1174,7 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(layout)
         
         # Welcome label
-        welcome_label = QLabel(f"Welcome, {operator_name}!")
+        welcome_label = QLabel(f"Bem Vindo, {operator_name}!")
         welcome_label.setStyleSheet("font-size: 18px; font-weight: bold;")
         layout.addWidget(welcome_label, alignment=Qt.AlignCenter)
         
@@ -1091,14 +1187,72 @@ class MainWindow(QMainWindow):
         # ADMIN Management tab
         admin_tab = QWidget()
         admin_layout = QVBoxLayout()
-        admin_tab.setLayout(admin_layout)
-        
+    
 
-        admin_buttons = QHBoxLayout()
-        self.search_user_button = QPushButton("CREATE DATABASE")
-        self.search_user_button.clicked.connect(self.Admin_Database_Create)
-        admin_buttons.addWidget(self.search_user_button)
-        admin_layout.addLayout(admin_buttons)
+         
+        image_path = os.path.abspath("src/assets/datacenter.jpg").replace("\\", "/")
+        print("Imagem carregada de:", image_path)
+
+        # Aplica estilo com caminho direto (sem 'file:///')
+        admin_tab.setStyleSheet(f"""
+            background-image: url("{image_path}");
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: cover;
+        """)
+
+        #admin_tab.setLayout(admin_layout) nao funciona o move!!!!!!!!
+
+        
+        ##2025-1
+        #admin_buttons = QHBoxLayout()
+        
+        self.create_button = QPushButton("CREATE DATABASE",admin_tab)
+        self.create_button.move(0,0)             # Posição (x, y)
+        self.create_button.setFixedSize(200,60)
+        self.create_button.clicked.connect(self.Admin_Database_Create)
+        self.create_button.setStyleSheet("""
+    QPushButton {
+        background-color: #3498db;      /* azul */
+        color: white;
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: #2980b9;      /* azul escuro ao passar o rato */
+    }
+""")
+
+
+
+    ##2025-2
+        bacupe_buttons = QHBoxLayout()
+        self.bacupe_buttons = QPushButton("BACUPE A DATABASE",admin_tab)
+        self.bacupe_buttons.move(310,0)             # Posição (x, y)
+        self.bacupe_buttons.setFixedSize(200,60)
+        self.bacupe_buttons.setStyleSheet("""
+    QPushButton {
+        background-color: #3498db;      /* azul */
+        color: white;
+        border-radius: 10px;
+        padding: 10px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: #2980b9;      /* azul escuro ao passar o rato */
+    }
+""")
+
+    
+
+
+
+
+        self.bacupe_buttons.clicked.connect(self.Bacupe_Database)
+
+        #admin_buttons.addWidget(self.search_user_button)
+        admin_layout.addLayout(bacupe_buttons)
 
 
         # User Management tab
@@ -1109,6 +1263,7 @@ class MainWindow(QMainWindow):
         user_buttons = QHBoxLayout()
         self.search_user_button = QPushButton("Search User")
         self.search_user_button.clicked.connect(self.open_user_search)
+        
         user_buttons.addWidget(self.search_user_button)
         
         self.blocked_users_button = QPushButton("View Blocked Users")
@@ -1151,15 +1306,33 @@ class MainWindow(QMainWindow):
         logout_button = QPushButton("Logout")
         logout_button.clicked.connect(self.logout)
         layout.addWidget(logout_button, alignment=Qt.AlignRight)
+
+
+
+    def Bacupe_Database(self):
+        """Admin Bacupe"""
+
+        ConfigManager.fazer_backup()    
+        msgBox = QMessageBox()
+        msgBox.setText("Bacupe Done!!!!!!!!.")
+        msgBox.exec()
+
+    
     
     def Admin_Database_Create(self):
         """Admin create"""
         
-        msgBox = QMessageBox()
+
+        #msgBox = QMessageBox()
+        #msgBox.setText("Base dados Criada.")
+        #msgBox.exec()
+
+        window = MySQLForm()
+        window.exec()
+        
+
         #2025
-        exec_script_mysql("BUYPY.sql", "localhost", "adminis", "ZZtopes!23", "sys")
-        msgBox.setText("Base dados Criada.")
-        msgBox.exec()
+        #exec_script_mysql("BUYPY.sql", "localhost", "adminis", "ZZtopes!23", "sys")
         #dialog = UserSearchDialog(self.db_manager, self)
         #dialog.exec()
     
@@ -1203,6 +1376,8 @@ class BuyPyBackoffice:
         # Try to login with saved credentials
         username, password = self.config.load_config()
         if username and password and self.db.connect(username, password):
+            ConfigManager.username=username
+            ConfigManager.password=password
             self.show_main_window(username)
         else:
             self.show_login()
@@ -1229,4 +1404,7 @@ class BuyPyBackoffice:
         self.main_window.show()
 
 if __name__ == "__main__":
+    print("\n")
+    print(os.path.exists("src\\assets\\datacenter.jpg"))
+   # ConfigManager.fazer_backup()
     BuyPyBackoffice()

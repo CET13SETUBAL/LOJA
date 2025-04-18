@@ -30,7 +30,7 @@ CREATE TABLE Book (
 );
 
 -- Tabela Eletrónicos
-CREATE TABLE Electronics (
+CREATE TABLE Electronic (
     product_id INT PRIMARY KEY,
     serial_number VARCHAR(50),
     brand VARCHAR(50),
@@ -63,8 +63,8 @@ CREATE TABLE `Order` (
     shipping_method VARCHAR(50),
     status VARCHAR(50),
     card_number VARCHAR(20),
-    card_holder_name VARCHAR(100),
-    card_expiry_date DATE,
+    cardholder_name VARCHAR(100),
+    card_expiry DATE,
     FOREIGN KEY (customer_id) REFERENCES Customer(customer_id)
 );
 
@@ -112,7 +112,7 @@ CREATE PROCEDURE CreateOrder (
     IN custId INT, IN shipMethod VARCHAR(50),
     IN cardNum VARCHAR(20), IN cardName VARCHAR(100), IN cardExpiry DATE)
 BEGIN
-    INSERT INTO `Order` (customer_id, shipping_method, card_number, card_holder_name, card_expiry_date)
+    INSERT INTO `Order` (customer_id, shipping_method, card_number, cardholder_name, card_expiry)
     VALUES (custId, shipMethod, cardNum, cardName, cardExpiry);
 END //
 
