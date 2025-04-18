@@ -17,9 +17,9 @@ LOJA/
 │   ├── backffice/       # Código Python do cliente de terminal
 │   ├── backffice_gui/   # (Opcional) Código Python da interface gráfica
 │   └── db/            # Scripts SQL
-│       ├── model.sql
-│       ├── users.sql
-│       └── data.sql
+│       ├── BUYPAY.sql (script total de instalação)
+│       ├── teste -> users.sql
+│       └── teste -> data.sql
 ├── venv/              # Ambiente virtual (ignorado no Git)
 ├── requirements.txt   # Dependências do projeto
 └── README.md          # Este ficheiro
@@ -30,3 +30,4 @@ LOJA/
 python src/backoffice_gui/buypay.py
 
 
+Video Tutorial de Instalação : https://www.youtube.com/watch?v=2vuObXxq7KU
